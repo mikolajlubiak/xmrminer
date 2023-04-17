@@ -12,7 +12,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
-//	"syscall"
+	"syscall"
 // 	"os/signal"
 )
 
