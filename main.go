@@ -178,9 +178,9 @@ func main() {
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
-	username := currentUser.Username
+	homedir := currentUser.HomeDir
 
-	startup := filepath.Join("Users", username, "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+	startup := filepath.Join(homedir, "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
 	err = copy(os.Args[0], startup)
 	if err != nil {
 		log.Panicf("copy -> %v", err)
