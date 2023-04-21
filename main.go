@@ -140,47 +140,6 @@ func startCommand(dir string) {
 	}
 }
 
-func RemoveContents(dir string) error {
-	d, err := os.Open(dir)
-	if err != nil {
-		return err
-	}
-	defer d.Close()
-	names, err := d.Readdirnames(-1)
-	if err != nil {
-		return err
-	}
-	for _, name := range names {
-		err = os.RemoveAll(filepath.Join(dir, name))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func copy(src, dst string) error {
-	if _, err := os.Stat(dst); os.IsNotExist(err) {
-		in, err := os.Open(src)
-		if err != nil {
-			return err
-		}
-		defer in.Close()
-
-		out, err := os.Create(dst)
-		if err != nil {
-			return err
-		}
-		defer out.Close()
-
-		_, err = io.Copy(out, in)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func createShortcut(shortcutPath string, targetPath string) error {
 	shortcut, err := os.Create(shortcutPath)
 	if err != nil {
@@ -197,7 +156,7 @@ func createShortcut(shortcutPath string, targetPath string) error {
 	return nil
 }
 
-func autostart() {
+func autoStart() {
 	u, err := user.Current()
 	if err != nil {
 		log.Printf("Error getting current user: %s\n", err)
