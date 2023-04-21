@@ -2,7 +2,10 @@ module xmrminer
 
 go 1.20
 
-require golang.org/x/sys v0.7.0
+require (
+	github.com/redcode-labs/Coldfire v0.0.0-20220602151245-e8ed4b6c6dc2
+	golang.org/x/sys v0.7.0
+)
 
 require (
 	github.com/anvie/port-scanner v0.0.0-20180225151059-8159197d3770 // indirect
@@ -14,6 +17,5 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
-	github.com/redcode-labs/Coldfire v0.0.0-20220602151245-e8ed4b6c6dc2 // indirect
 	github.com/savaki/jq v0.0.0-20161209013833-0e6baecebbf8 // indirect
 )

