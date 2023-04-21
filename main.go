@@ -16,8 +16,8 @@ import (
 	"strings"
 	"syscall"
 
+	coldfire "github.com/redcode-labs/Coldfire"
 	"golang.org/x/sys/windows"
-	"github.com/redcode-labs/Coldfire"
 )
 
 // func that downloads files
