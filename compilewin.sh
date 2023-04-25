@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-GOOS=windows GOARCH=amd64 go build --ldflags "-H=windowsgui"
+GOOS=windows GOARCH=amd64 garble build --ldflags "-H=windowsgui"

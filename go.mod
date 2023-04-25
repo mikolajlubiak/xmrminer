@@ -1,4 +1,4 @@
-module xmrminer
+module cortana
 
 go 1.20
 
